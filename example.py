@@ -54,7 +54,7 @@ testY = to_categorical(testY, 2)
 # Network building
 net = input_data(shape=[None, 100])
 net = embedding(net, input_dim=10000, output_dim=128)
-net = lstm(net, 128, drouput=0.8)
+net = lstm(net, 128, dropout=0.8)
 # net = dropout(net, 0.5)
 net = fully_connected(net, 2, activation='softmax')
 net = regression(net, optimizer='adam', learning_rate=0.005, loss='categorical_crossentropy')
