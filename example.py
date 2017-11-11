@@ -45,21 +45,21 @@ testX, testY = test
 
 # Data preprocessing
 # Sequence padding
-trainX = pad_sequences(trainX, maxlen=200, value=0.)
-testX = pad_sequences(testX, maxlen=200, value=0.)
+trainX = pad_sequences(trainX, maxlen=100, value=0.)
+testX = pad_sequences(testX, maxlen=100, value=0.)
 # Converting labels to binary vectors
 trainY = to_categorical(trainY, 2)
 testY = to_categorical(testY, 2)
 
 # Network building
-net = input_data(shape=[None, 200])
-net = embedding(net, input_dim=20000, output_dim=128)
-net = lstm(net, BasicLSTMCell(128), BasicLSTMCell(128))
-net = dropout(net, 0.5)
+net = input_data(shape=[None, 100])
+net = embedding(net, input_dim=10000, output_dim=128)
+net = lstm(net, 128, drouput=0.8)
+# net = dropout(net, 0.5)
 net = fully_connected(net, 2, activation='softmax')
-net = regression(net, optimizer='adam', loss='categorical_crossentropy')
+net = regression(net, optimizer='adam', learning_rate=0.005, loss='categorical_crossentropy')
 
 # Training
 model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=2)
 model.fit(trainX, trainY, validation_set=0.1, show_metric=True, batch_size=64)
-model.evaluate(testX, testY, batch_size=64)
+# model.evaluate(testX, testY, batch_size=64)
