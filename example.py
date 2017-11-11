@@ -22,7 +22,7 @@ from tflearn.data_utils import to_categorical, pad_sequences
 from tflearn.datasets import imdb
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.embedding_ops import embedding
-from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
+from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell, lstm
 from tflearn.layers.estimator import regression
 
 label = {'realDonaldTrump':0, 'HillaryClinton':1}
@@ -54,7 +54,7 @@ testY = to_categorical(testY, 2)
 # Network building
 net = input_data(shape=[None, 200])
 net = embedding(net, input_dim=20000, output_dim=128)
-net = bidirectional_rnn(net, BasicLSTMCell(128), BasicLSTMCell(128))
+net = lstm(net, BasicLSTMCell(128), BasicLSTMCell(128))
 net = dropout(net, 0.5)
 net = fully_connected(net, 2, activation='softmax')
 net = regression(net, optimizer='adam', loss='categorical_crossentropy')
