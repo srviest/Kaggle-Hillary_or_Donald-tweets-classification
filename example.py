@@ -99,6 +99,6 @@ if __name__ == '__main__':
 
     # Training
     model = build_model()
-    model.fit(trainX, trainY, validation_set=0.1, n_epoch=1, show_metric=True, batch_size=64, run_id='test')
+    model.fit(trainX, trainY, validation_set=0.1, n_epoch=10, show_metric=True, batch_size=64, run_id='test')
     model.save(model_path)
     # print(model.evaluate(testX, testY, batch_size=64))
