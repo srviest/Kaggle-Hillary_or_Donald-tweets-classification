@@ -68,12 +68,12 @@ def build_model():
     return model
 
 if __name__ == '__main__':
-    train_name = './train.csv'
-    test_name = './test.csv'
-    trainX, trainY = read_csv(file_name)
+    train_file = './train.csv'
+    test_file = './test.csv'
+    trainX, trainY = read_csv(train_file)
     trainX = data_preprocess(trainX)
 
-    testX, testY = read_csv(test_name)
+    testX, testY = read_csv(test_file)
     testX = data_preprocess(testX)
 
     # IMDB Dataset loading
