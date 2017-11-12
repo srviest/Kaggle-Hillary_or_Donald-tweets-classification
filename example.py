@@ -66,9 +66,6 @@ def build_model():
     model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=3, tensorboard_dir=model_dir)
     return model
 
-
-
-
 if __name__ == '__main__':
     file_name = './train.csv'
     X, y = read_csv(file_name)
@@ -85,7 +82,7 @@ if __name__ == '__main__':
     trainX = pad_sequences(trainX, maxlen=100, value=0.)
     # testX = pad_sequences(testX, maxlen=100, value=0.)
     # Converting labels to binary vectors
-    trainY = to_categorical(trainY, 2)
+    trainY = to_categorical(y, 2)
     # testY = to_categorical(testY, 2)
 
 
