@@ -15,7 +15,6 @@ Links:
 """
 
 from __future__ import division, print_function, absolute_import
-import read_csv
 import csv, os, errno, nltk, re, math
 import tflearn
 from tflearn.data_utils import to_categorical, pad_sequences
