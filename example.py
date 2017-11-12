@@ -17,6 +17,7 @@ Links:
 from __future__ import division, print_function, absolute_import
 import csv, os, errno, nltk, re, math
 import tflearn
+import numpy as np
 from tflearn.data_utils import to_categorical, pad_sequences
 from tflearn.datasets import imdb
 from tflearn.layers.core import input_data, dropout, fully_connected
@@ -67,9 +68,13 @@ def build_model():
     return model
 
 if __name__ == '__main__':
-    file_name = './train.csv'
-    X, y = read_csv(file_name)
-    trainX = data_preprocess(X)
+    train_name = './train.csv'
+    test_name = './test.csv'
+    trainX, trainY = read_csv(file_name)
+    trainX = data_preprocess(trainX)
+
+    testX, testY = read_csv(test_name)
+    testX = data_preprocess(testX)
 
     # IMDB Dataset loading
     # train, test, _ = imdb.load_data(path='imdb.pkl', n_words=10000,
@@ -80,10 +85,10 @@ if __name__ == '__main__':
     # Data preprocessing
     # Sequence padding
     trainX = pad_sequences(trainX, maxlen=100, value=0.)
-    # testX = pad_sequences(testX, maxlen=100, value=0.)
+    testX = pad_sequences(testX, maxlen=100, value=0.)
     # Converting labels to binary vectors
-    trainY = to_categorical(y, 2)
-    # testY = to_categorical(testY, 2)
+    trainY = to_categorical(trainY, 2)
+    testY = to_categorical(testY, 2)
 
 
     # make save folder
@@ -99,6 +104,8 @@ if __name__ == '__main__':
 
     # Training
     model = build_model()
-    model.fit(trainX, trainY, validation_set=0.1, n_epoch=10, show_metric=True, batch_size=64, run_id='test')
+    model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
     model.save(model_path)
     # print(model.evaluate(testX, testY, batch_size=64))
+    predict = model.predict(testX)
+    np.savetxt(predict, './test_predict.csv')
