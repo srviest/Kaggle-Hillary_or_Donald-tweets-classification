@@ -72,6 +72,6 @@ except OSError as e:
 
 # Training
 model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=3, tensorboard_dir=model_dir)
-model.fit(trainX, trainY, validation_set=0.1, epoch=1, show_metric=True, batch_size=64, run_id='test')
+model.fit(trainX, trainY, validation_set=0.1, n_epoch=1, show_metric=True, batch_size=64, run_id='test')
 model.save(model_path)
 print(model.evaluate(testX, testY, batch_size=64))
