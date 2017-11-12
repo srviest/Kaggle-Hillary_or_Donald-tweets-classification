@@ -16,7 +16,7 @@ Links:
 
 from __future__ import division, print_function, absolute_import
 
-import csv, os
+import csv, os, errno
 import tflearn
 from tflearn.data_utils import to_categorical, pad_sequences
 from tflearn.datasets import imdb
