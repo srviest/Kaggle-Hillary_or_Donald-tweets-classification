@@ -24,6 +24,7 @@ from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.embedding_ops import embedding
 from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
 from tflearn.layers.estimator import regression
+from sklearn.preprocessing import LabelEncoder
 
 label = {'realDonaldTrump':0, 'HillaryClinton':1}
 
