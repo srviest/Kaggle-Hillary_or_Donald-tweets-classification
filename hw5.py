@@ -15,14 +15,14 @@ Links:
 """
 
 from __future__ import division, print_function, absolute_import
-
-import csv
+import csv, os, errno, nltk, re, math
 import tflearn
+import numpy as np
 from tflearn.data_utils import to_categorical, pad_sequences
 from tflearn.datasets import imdb
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.embedding_ops import embedding
-from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
+from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell, lstm
 from tflearn.layers.estimator import regression
 from sklearn.preprocessing import LabelEncoder
 
@@ -30,7 +30,6 @@ label = {'realDonaldTrump':0, 'HillaryClinton':1}
 
 def read_csv(file_name):
     X,y = [], []
-    
     with open(file_name) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -38,28 +37,85 @@ def read_csv(file_name):
             y.append(label[row['handle']])
     return X, y
 
-# IMDB Dataset loading
-train, test, _ = imdb.load_data(path='imdb.pkl', n_words=10000,
-                                valid_portion=0.1)
-trainX, trainY = train
-testX, testY = test
+def tokenize(text):
+    tokens = []
+    stopwords = set(nltk.corpus.stopwords.words('english'))
+    toks = nltk.word_tokenize(text.decode('utf-8'))
+    tokens += [tok.lower() for tok in toks if tok.lower() not in stopwords and re.match(r'\w', tok)]
+    return tokens
 
-# Data preprocessing
-# Sequence padding
-trainX = pad_sequences(trainX, maxlen=200, value=0.)
-testX = pad_sequences(testX, maxlen=200, value=0.)
-# Converting labels to binary vectors
-trainY = to_categorical(trainY, 2)
-testY = to_categorical(testY, 2)
+def make_dictionary(trainX):
+    all_words = []
+    for x in X:
+        all_words+=tokenize(x)
+    label_encoder = LabelEncoder()
+    integer_encoded = label_encoder.fit(all_words)
+    return integer_encoded, len(all_words)+1
 
-# Network building
-net = input_data(shape=[None, 200])
-net = embedding(net, input_dim=20000, output_dim=128)
-net = bidirectional_rnn(net, BasicLSTMCell(128), BasicLSTMCell(128))
-net = dropout(net, 0.5)
-net = fully_connected(net, 2, activation='softmax')
-net = regression(net, optimizer='adam', loss='categorical_crossentropy')
 
-# Training
-model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=2)
-model.fit(trainX, trainY, validation_set=0.1, show_metric=True, batch_size=64)
+def data_preprocess(X, encoder):
+    encoder
+    newX = []
+    
+    for x in X:
+        try:
+            integer_encoded.transform(tokenize(x))
+        newX.append()
+    return newX
+
+
+def build_model():
+    # Network building
+    net = input_data(shape=[None, 100])
+    net = embedding(net, input_dim=dict_size, output_dim=128)
+    net = lstm(net, 128, dropout=0.8)
+    # net = dropout(net, 0.5)
+    net = fully_connected(net, 2, activation='softmax')
+    net = regression(net, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy')
+    model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=3, tensorboard_dir=model_dir)
+    return model
+
+if __name__ == '__main__':
+    train_file = './train.csv'
+    test_file = './test.csv'
+    trainX, trainY = read_csv(train_file)
+
+    integer_encoded, dict_size = make_dictionary(trainX)
+    trainX = data_preprocess(trainX, integer_encoded)
+
+    testX, testY = read_csv(test_file)
+    testX = data_preprocess(testX, integer_encoded)
+
+    # IMDB Dataset loading
+    # train, test, _ = imdb.load_data(path='imdb.pkl', n_words=10000,
+    #                                 valid_portion=0.1)
+    # trainX, trainY = train
+    # testX, testY = test
+
+    # Data preprocessing
+    # Sequence padding
+    trainX = pad_sequences(trainX, maxlen=100, value=0.)
+    testX = pad_sequences(testX, maxlen=100, value=0.)
+    # Converting labels to binary vectors
+    trainY = to_categorical(trainY, 2)
+    testY = to_categorical(testY, 2)
+
+
+    # make save folder
+    model_dir = './model'
+    model_path = os.path.join(model_dir, 'lstm.pth')
+    try:
+        os.makedirs(model_dir)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            print('Directory already exists.')
+        else:
+            raise
+
+    # Training
+    model = build_model()
+    model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
+    model.save(model_path)
+    # print(model.evaluate(testX, testY, batch_size=64))
+    predict = model.predict(testX)
+    np.savetxt(predict, './test_predict.csv')
