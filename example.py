@@ -16,7 +16,7 @@ Links:
 
 from __future__ import division, print_function, absolute_import
 
-import csv
+import csv, os
 import tflearn
 from tflearn.data_utils import to_categorical, pad_sequences
 from tflearn.datasets import imdb
@@ -59,7 +59,19 @@ net = lstm(net, 128, dropout=0.8)
 net = fully_connected(net, 2, activation='softmax')
 net = regression(net, optimizer='adam', learning_rate=0.005, loss='categorical_crossentropy')
 
+# make save folder
+model_dir = './model'
+model_path = os.path.join(model_dir, 'lstm.pth')
+try:
+    os.makedirs(model_dir)
+except OSError as e:
+    if e.errno == errno.EEXIST:
+        print('Directory already exists.')
+    else:
+        raise
+
 # Training
-model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=2)
-model.fit(trainX, trainY, validation_set=0.1, show_metric=True, batch_size=64)
-# model.evaluate(testX, testY, batch_size=64)
+model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=3, tensorboard_dir=model_dir)
+model.fit(trainX, trainY, validation_set=0.1, show_metric=True, batch_size=64, run_id='test')
+model.save(model_path)
+print(model.evaluate(testX, testY, batch_size=64))
