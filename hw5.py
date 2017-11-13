@@ -97,10 +97,10 @@ if __name__ == '__main__':
 
     # Training
     model = build_model_crnn()
-    print(trainX.shape, len(trainY))
     model.fit(trainX, trainY, validation_split=0.1, epochs=10)
     # model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
     model.save(model_path)
     # print(model.evaluate(testX, testY, batch_size=64))
     predict = model.predict(testX)
-    np.savetxt(predict, './test_predict.csv')
+    print(predict)
+    np.savetxt('./predict.csv', predict)
