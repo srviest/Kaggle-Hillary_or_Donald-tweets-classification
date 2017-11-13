@@ -71,12 +71,8 @@ def build_model_crnn():
     return model
 
 def write_result(predict, result_path):
-    print(predict.shape)
     d = 1-predict
-    h = np.expand_dims(predict, axis=1)
-    d = np.expand_dims(d, axis=1)
-    p = np.concatenate((d,h),axis=1)
-    print((p.shape, d.shape, h.shape))
+    p = np.concatenate((d,predict),axis=1)
     index = np.expand_dims(np.array(range(p.shape[0])), axis=1)
     result = np.concatenate((index,p),axis=1)
     with open(result_path, 'wb') as file:
