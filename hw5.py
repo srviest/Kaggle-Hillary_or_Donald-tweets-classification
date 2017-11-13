@@ -71,6 +71,7 @@ def build_model_crnn():
     return model
 
 def write_result(predict, result_path):
+    d = 1-predict
     length = predict.shape[0]
     result = np.ndarray((length,3), dtype = object)
     result[:,0] = range(length)
