@@ -71,6 +71,7 @@ def build_model_crnn():
     return model
 
 def write_result(predict, result_path):
+    print(predict.sahpe)
     d = 1-predict
     h = np.expand_dims(predict, axis=1)
     d = np.expand_dims(d, axis=1)
