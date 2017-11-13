@@ -71,10 +71,12 @@ def build_model_crnn():
     return model
 
 def write_result(predict, result_path):
-    d = 1-predict
-    p = np.concatenate((d,predict),axis=1)
-    index = np.expand_dims(np.array(range(p.shape[0])), axis=1)
-    result = np.concatenate((index,p),axis=1)
+    length = predict.shape[0]
+    result = np.ndarray((length,3), dtype = object)
+    result[:,0] = range(length)
+    result[:,1] = d[:,0]
+    result[:,2] = predict[:,0]
+
     with open(result_path, 'wb') as file:
         file.write('id,realDonaldTrump,HillaryClinton\n')
         np.savetxt(file, result, delimiter=',')
