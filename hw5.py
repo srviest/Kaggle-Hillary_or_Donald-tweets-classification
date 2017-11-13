@@ -27,7 +27,7 @@ from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell, lstm
 from tflearn.layers.estimator import regression
 
 from keras.layers import Embedding, LSTM, Dense, Conv1D, MaxPooling1D, Dropout, Activation
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 
@@ -70,6 +70,17 @@ def build_model_crnn():
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
 
+def write_result(predict, result_path):
+    d = 1-prediction
+    h = np.expand_dims(predict, axis=1)
+    d = np.expand_dims(d, axis=1)
+    p = np.concantenate((d,h),axis=1)
+    index = np.expand_dims(np.array(range(p.shape[0])), axis=1)
+    result = np.concantenate((index,p),axis=1)
+    with open(result_path, 'wb') as file:
+        f.write('id,realDonaldTrump,HillaryClinton\n')
+        np.savetxt(file, result, delimiter=',')
+
 if __name__ == '__main__':
     train_file = './train.csv'
     test_file = './test.csv'
@@ -95,12 +106,16 @@ if __name__ == '__main__':
         else:
             raise
 
+    # Laod pre-trained model
+    if os.path.isfile(model_path):
+        model = load_model(model_path)
     # Training
-    model = build_model_crnn()
-    model.fit(trainX, trainY, validation_split=0.1, epochs=10)
-    # model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
-    model.save(model_path)
+    else:
+        model = build_model_crnn()
+        model.fit(trainX, trainY, validation_split=0.1, epochs=10)
+        # model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
+        model.save(model_path)
     # print(model.evaluate(testX, testY, batch_size=64))
     predict = model.predict(testX)
-    print(predict)
-    np.savetxt('./predict.csv', predict)
+    write_result(predict, './prediction.csv')
+    
