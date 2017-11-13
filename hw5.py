@@ -77,10 +77,9 @@ def write_result(predict, result_path):
     result[:,0] = range(length)
     result[:,1] = d[:,0]
     result[:,2] = predict[:,0]
-
-    with open(result_path, 'wb') as file:
-        file.write('id,realDonaldTrump,HillaryClinton\n')
-        np.savetxt(file, result, delimiter=',')
+    np.savetxt(result_path, result, 
+        delimiter=',', fmt=['%d', '%f', '%f'], 
+        header='id,realDonaldTrump,HillaryClinton\n', comments='')
 
 if __name__ == '__main__':
     train_file = './train.csv'
