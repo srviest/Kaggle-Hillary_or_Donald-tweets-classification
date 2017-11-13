@@ -74,9 +74,9 @@ def write_result(predict, result_path):
     d = 1-predict
     h = np.expand_dims(predict, axis=1)
     d = np.expand_dims(d, axis=1)
-    p = np.concantenate((d,h),axis=1)
+    p = np.concatenate((d,h),axis=1)
     index = np.expand_dims(np.array(range(p.shape[0])), axis=1)
-    result = np.concantenate((index,p),axis=1)
+    result = np.concatenate((index,p),axis=1)
     with open(result_path, 'wb') as file:
         f.write('id,realDonaldTrump,HillaryClinton\n')
         np.savetxt(file, result, delimiter=',')
