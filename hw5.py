@@ -18,15 +18,20 @@ from __future__ import division, print_function, absolute_import
 import csv, os, errno, nltk, re, math
 import tflearn
 import numpy as np
-from tflearn.data_utils import to_categorical, pad_sequences
+
+from tflearn.data_utils import to_categorical
 from tflearn.datasets import imdb
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.embedding_ops import embedding
 from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell, lstm
 from tflearn.layers.estimator import regression
-from sklearn.preprocessing import LabelEncoder
 
-label = {'realDonaldTrump':0, 'HillaryClinton':1}
+from keras.layers import Embedding, LSTM, Dense, Conv1D, MaxPooling1D, Dropout, Activation
+from keras.models import Sequential
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+
+label = {'realDonaldTrump':0, 'HillaryClinton':1, 'none':-1}
 
 def read_csv(file_name):
     X,y = [], []
@@ -35,36 +40,15 @@ def read_csv(file_name):
         for row in reader:
             X.append(row['tweet'])
             y.append(label[row['handle']])
-    return X, y
+    return (X,y)
 
-def tokenize(text):
-    tokens = []
-    stopwords = set(nltk.corpus.stopwords.words('english'))
-    toks = nltk.word_tokenize(text.decode('utf-8'))
-    tokens += [tok.lower() for tok in toks if tok.lower() not in stopwords and re.match(r'\w', tok)]
-    return tokens
-
-def make_dictionary(trainX):
-    all_words = []
-    for x in X:
-        all_words+=tokenize(x)
-    label_encoder = LabelEncoder()
-    integer_encoded = label_encoder.fit(all_words)
-    return integer_encoded, len(all_words)+1
+def make_dictionary(trainX, dictionary_size=10000):
+    tokenizer = Tokenizer(num_words=dictionary_size)
+    tokenizer.fit_on_texts(trainX)
+    return tokenizer
 
 
-def data_preprocess(X, encoder):
-    encoder
-    newX = []
-    
-    for x in X:
-        try:
-            integer_encoded.transform(tokenize(x))
-        newX.append()
-    return newX
-
-
-def build_model():
+def build_model_tflearn():
     # Network building
     net = input_data(shape=[None, 100])
     net = embedding(net, input_dim=dict_size, output_dim=128)
@@ -75,32 +59,31 @@ def build_model():
     model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=3, tensorboard_dir=model_dir)
     return model
 
+def build_model_keras():
+    model = Sequential()
+    model.add(Embedding(10000, 128, input_length=200))
+    model.add(Dropout(0.2))
+    model.add(Conv1D(64, 5, activation='relu'))
+    model.add(MaxPooling1D(pool_size=4))
+    model.add(LSTM(128))
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
+
 if __name__ == '__main__':
     train_file = './train.csv'
     test_file = './test.csv'
-    trainX, trainY = read_csv(train_file)
+    (train_data, trainY) = read_csv(train_file)
+    (test_data, testY) = read_csv(test_file)
 
-    integer_encoded, dict_size = make_dictionary(trainX)
-    trainX = data_preprocess(trainX, integer_encoded)
+    tokenizer = make_dictionary(train_data)
+    trainX = tokenizer.texts_to_sequences(train_data)
+    testX = tokenizer.texts_to_sequences(test_data)
 
-    testX, testY = read_csv(test_file)
-    testX = data_preprocess(testX, integer_encoded)
-
-    # IMDB Dataset loading
-    # train, test, _ = imdb.load_data(path='imdb.pkl', n_words=10000,
-    #                                 valid_portion=0.1)
-    # trainX, trainY = train
-    # testX, testY = test
-
-    # Data preprocessing
     # Sequence padding
-    trainX = pad_sequences(trainX, maxlen=100, value=0.)
-    testX = pad_sequences(testX, maxlen=100, value=0.)
-    # Converting labels to binary vectors
-    trainY = to_categorical(trainY, 2)
-    testY = to_categorical(testY, 2)
-
-
+    trainX = pad_sequences(trainX, maxlen=200)
+    testX = pad_sequences(testX, maxlen=200)
+    
     # make save folder
     model_dir = './model'
     model_path = os.path.join(model_dir, 'lstm.pth')
@@ -113,9 +96,11 @@ if __name__ == '__main__':
             raise
 
     # Training
-    model = build_model()
-    model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
-    model.save(model_path)
+    model = build_model_keras()
+    print(trainX.shape, len(trainY))
+    model.fit(trainX, trainY, validation_split=0.1, epochs=10)
+    # model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
+    # model.save(model_path)
     # print(model.evaluate(testX, testY, batch_size=64))
-    predict = model.predict(testX)
-    np.savetxt(predict, './test_predict.csv')
+    # predict = model.predict(testX)
+    # np.savetxt(predict, './test_predict.csv')
