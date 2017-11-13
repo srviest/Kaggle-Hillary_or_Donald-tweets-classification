@@ -71,7 +71,7 @@ def build_model_crnn():
     return model
 
 def write_result(predict, result_path):
-    d = 1-prediction
+    d = 1-predicts
     h = np.expand_dims(predict, axis=1)
     d = np.expand_dims(d, axis=1)
     p = np.concantenate((d,h),axis=1)
