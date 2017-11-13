@@ -79,7 +79,7 @@ def write_result(predict, result_path):
     result[:,2] = predict[:,0]
     np.savetxt(result_path, result, 
         delimiter=',', fmt=['%d', '%f', '%f'], 
-        header='id,realDonaldTrump,HillaryClinton\n', comments='')
+        header='id,realDonaldTrump,HillaryClinton', comments='')
 
 if __name__ == '__main__':
     train_file = './train.csv'
