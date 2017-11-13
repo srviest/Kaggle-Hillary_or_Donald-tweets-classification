@@ -59,7 +59,7 @@ def build_model_tflearn():
     model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=3, tensorboard_dir=model_dir)
     return model
 
-def build_model_keras():
+def build_model_crnn():
     model = Sequential()
     model.add(Embedding(10000, 128, input_length=200))
     model.add(Dropout(0.2))
@@ -96,11 +96,11 @@ if __name__ == '__main__':
             raise
 
     # Training
-    model = build_model_keras()
+    model = build_model_crnn()
     print(trainX.shape, len(trainY))
     model.fit(trainX, trainY, validation_split=0.1, epochs=10)
     # model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
-    # model.save(model_path)
+    model.save(model_path)
     # print(model.evaluate(testX, testY, batch_size=64))
-    # predict = model.predict(testX)
-    # np.savetxt(predict, './test_predict.csv')
+    predict = model.predict(testX)
+    np.savetxt(predict, './test_predict.csv')
