@@ -1,35 +1,20 @@
 # -*- coding: utf-8 -*-
-"""
-Simple example using LSTM recurrent neural network to classify IMDB
-sentiment dataset.
-References:
-    - Long Short Term Memory, Sepp Hochreiter & Jurgen Schmidhuber, Neural
-    Computation 9(8): 1735-1780, 1997.
-    - Andrew L. Maas, Raymond E. Daly, Peter T. Pham, Dan Huang, Andrew Y. Ng,
-    and Christopher Potts. (2011). Learning Word Vectors for Sentiment
-    Analysis. The 49th Annual Meeting of the Association for Computational
-    Linguistics (ACL 2011).
-Links:
-    - http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf
-    - http://ai.stanford.edu/~amaas/data/sentiment/
-"""
-
 from __future__ import division, print_function, absolute_import
-import csv, os, errno, nltk, re, math
-import tflearn
+import csv, os, errno, nltk, re, math, collections
 import numpy as np
-
-from tflearn.data_utils import to_categorical
-from tflearn.datasets import imdb
-from tflearn.layers.core import input_data, dropout, fully_connected
-from tflearn.layers.embedding_ops import embedding
-from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell, lstm
-from tflearn.layers.estimator import regression
-
+import argparse
 from keras.layers import Embedding, LSTM, Dense, Conv1D, MaxPooling1D, Dropout, Activation
 from keras.models import Sequential, load_model
 from keras.preprocessing.text import Tokenizer
+from keras.optimizers import Adam, SGD
 from keras.preprocessing.sequence import pad_sequences
+from keras.callbacks import ModelCheckpoint, Callback, ReduceLROnPlateau, TensorBoard
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
+parser = argparse.ArgumentParser(description='Homework 5: sentiment analysis')
+parser.add_argument('mode', metavar="mode", default="predict",  help='train or predict')
+parser.add_argument('--model', metavar="mode", default="crnn",  help='model')
+args = parser.parse_args()
 
 label = {'realDonaldTrump':0, 'HillaryClinton':1, 'none':-1}
 
@@ -47,28 +32,69 @@ def make_dictionary(trainX, dictionary_size=10000):
     tokenizer.fit_on_texts(trainX)
     return tokenizer
 
+class History(Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+        self.acc = []
 
-def build_model_tflearn():
-    # Network building
-    net = input_data(shape=[None, 100])
-    net = embedding(net, input_dim=dict_size, output_dim=128)
-    net = lstm(net, 128, dropout=0.8)
-    # net = dropout(net, 0.5)
-    net = fully_connected(net, 2, activation='softmax')
-    net = regression(net, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy')
-    model = tflearn.DNN(net, clip_gradients=0., tensorboard_verbose=3, tensorboard_dir=model_dir)
-    return model
+    def on_batch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        self.acc.append(logs.get('acc'))
 
-def build_model_crnn():
-    model = Sequential()
-    model.add(Embedding(10000, 128, input_length=200))
-    model.add(Dropout(0.2))
-    model.add(Conv1D(64, 5, activation='relu'))
-    model.add(MaxPooling1D(pool_size=4))
-    model.add(LSTM(128))
-    model.add(Dense(1, activation='sigmoid'))
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    return model
+class BuildModel(object):
+    def __init__(self, model, optimizer='adam'):
+        self.model = model
+        print('Initial learning rate: %f'%init_lr)
+        if optimizer=='adam':
+            self.optimizer = Adam(lr=init_lr)
+        elif optimizer=='sgd':
+            self.optimizer = SGD(lr=init_lr, momentum=momentum)
+    def build(self):        
+        if self.model=='crnn':
+            return self.build_model_crnn()
+        elif self.model=='cnn':
+            return self.build_model_cnn()
+        elif self.model=='rnn':
+            return self.build_model_rnn()
+
+    def build_model_crnn(self):
+        model = Sequential()
+        model.add(Embedding(dictionary_size, 128, input_length=padding_length))
+        model.add(Dropout(0.5))
+        model.add(Conv1D(64, 5, activation='relu'))
+        model.add(MaxPooling1D(pool_size=4))
+        model.add(LSTM(128, recurrent_dropout = 0.2))
+        model.add(Dense(1, activation='sigmoid'))
+        model.compile(loss='binary_crossentropy', optimizer=self.optimizer, metrics=['accuracy'])
+        return model
+
+    def build_model_rnn(self):
+        model = Sequential()
+        model.add(Embedding(dictionary_size, 64, input_length=padding_length))
+        model.add(LSTM(128, recurrent_dropout = 0.2))
+        model.add(Dense(1, activation='sigmoid'))
+        model.compile(loss='binary_crossentropy', optimizer=self.optimizer, metrics=['accuracy'])
+        return model
+
+    def build_model_cnn(self):
+        model = Sequential()
+        model.add(Embedding(dictionary_size, 128, input_length=padding_length))
+        model.add(Dropout(0.2))
+        # model.add(Conv1D(filters,
+        #          kernel_size,
+        #          padding='valid',
+        #          activation='relu',
+        #          strides=1))
+        # we use max pooling:
+        model.add(GlobalMaxPooling1D())
+
+        # We add a vanilla hidden layer:
+        model.add(Dense(hidden_dims))
+        model.add(Dropout(0.2))
+        model.add(Activation('relu'))
+        model.add(Dense(1, activation='sigmoid'))
+        model.compile(loss='binary_crossentropy', optimizer=self.optimizer, metrics=['accuracy'])
+        return model
 
 def write_result(predict, result_path):
     d = 1-predict
@@ -81,23 +107,49 @@ def write_result(predict, result_path):
         delimiter=',', fmt=['%d', '%f', '%f'], 
         header='id,realDonaldTrump,HillaryClinton', comments='')
 
+def train(model):
+    reduce_lr = ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=3, verbose=1, min_lr=0.001)
+    tfboard = TensorBoard(log_dir=model_dir, histogram_freq=0, 
+        write_graph=True, write_images=True, 
+        embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
+    history = History()
+    checkpointer = ModelCheckpoint(filepath=model_dir+'.ckpt', monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=False)
+    callbacks=[checkpointer, history, reduce_lr]
+    print(collections.Counter(trainY))
+    model.fit(trainX, trainY, batch_size=batch_num, validation_split=validation_split, epochs=epoch, callbacks=callbacks)
+    model.save(model_path)
+    np.savetxt(os.path.join(model_dir, 'loss.csv'), history.losses, fmt='%s')
+    np.savetxt(os.path.join(model_dir, 'acc.csv'), history.acc, fmt='%s')
+    
 if __name__ == '__main__':
+    # I/O parameters
     train_file = './train.csv'
     test_file = './test.csv'
+    model_dir = './model'+'_'+args.model
+    model_path = os.path.join(model_dir, args.model+'.hdf5')
+
+    # experiemnt parameters
+    validation_split = 0.2
+    dictionary_size = 10000
+    batch_num = 64
+    epoch = 5
+    init_lr = 0.01
+    momentum = 0.9
+    optimizer='adam'
+    padding_length=200
+
+    # read data and preprocess
     (train_data, trainY) = read_csv(train_file)
     (test_data, testY) = read_csv(test_file)
-
-    tokenizer = make_dictionary(train_data)
+    tokenizer = make_dictionary(train_data, dictionary_size=dictionary_size)
     trainX = tokenizer.texts_to_sequences(train_data)
     testX = tokenizer.texts_to_sequences(test_data)
 
     # Sequence padding
-    trainX = pad_sequences(trainX, maxlen=200)
-    testX = pad_sequences(testX, maxlen=200)
+    trainX = pad_sequences(trainX, maxlen=padding_length)
+    testX = pad_sequences(testX, maxlen=padding_length)
     
     # make save folder
-    model_dir = './model'
-    model_path = os.path.join(model_dir, 'lstm.pth')
     try:
         os.makedirs(model_dir)
     except OSError as e:
@@ -106,16 +158,24 @@ if __name__ == '__main__':
         else:
             raise
 
-    # Laod pre-trained model
-    if os.path.isfile(model_path):
-        model = load_model(model_path)
-    # Training
-    else:
-        model = build_model_crnn()
-        model.fit(trainX, trainY, validation_split=0.1, epochs=10)
-        # model.fit(trainX, trainY, validation_set=0.1, n_epoch=20, show_metric=True, batch_size=32, run_id='test')
-        model.save(model_path)
-    # print(model.evaluate(testX, testY, batch_size=64))
-    predict = model.predict(testX)
-    write_result(predict, './prediction.csv')
-    
+    # select model
+    model_builder = BuildModel(args.model, optimizer)
+    model = model_builder.build()
+
+    # train or predict
+    if args.mode=='train':
+        print("Start training")
+        train(model)
+    elif args.mode=='predict':
+        # Laod pre-trained model
+        if os.path.isfile(model_path):
+            print("Predict using pre-trained model")
+            model = load_model(model_path)
+        # Training
+        else:
+            print("Unable to find pre-trained model, training from scratch")
+            train(model)
+        print("Predicting...")
+        predict = model.predict(testX)
+        write_result(predict, './prediction.csv')
+        
